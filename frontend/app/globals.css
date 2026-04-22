@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg: #0A0E1A;
+    --card: rgba(16, 22, 40, 0.7);
+    --primary: #7C3AED;
+    --secondary: #06B6D4;
+    --border: rgba(255, 255, 255, 0.08);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg);
+    background-image:
+      radial-gradient(circle at 2px 2px, rgba(124, 58, 237, 0.04) 1px, transparent 0);
+    background-size: 40px 40px;
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar       { width: 6px; }
+  ::-webkit-scrollbar-track  { background: transparent; }
+  ::-webkit-scrollbar-thumb  { background: rgba(124,58,237,0.4); border-radius: 3px; }
+
+  /* Monospace for addresses */
+  .font-mono { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+}
+
+@layer utilities {
+  .glass {
+    background: var(--card);
+    backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+  }
+
+  .glass-hover {
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+  .glass-hover:hover {
+    border-color: rgba(124, 58, 237, 0.3);
+    box-shadow: 0 0 24px rgba(124, 58, 237, 0.08);
+  }
+
+  .gradient-text {
+    background: linear-gradient(135deg, #7C3AED, #06B6D4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .glow-purple { box-shadow: 0 0 30px rgba(124, 58, 237, 0.3); }
+  .glow-cyan   { box-shadow: 0 0 30px rgba(6, 182, 212, 0.3); }
+  .glow-green  { box-shadow: 0 0 30px rgba(16, 185, 129, 0.2); }
+  .glow-red    { box-shadow: 0 0 30px rgba(239, 68, 68, 0.2); }
+
+  .animate-pulse-slow {
+    animation: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+
+  .step-line::after {
+    content: '';
+    display: block;
+    width: 2px;
+    height: 100%;
+    background: rgba(255,255,255,0.05);
+    margin: 4px auto 0;
+  }
+}
+
+/* Slide in animation for toasts */
+@keyframes slide-in-from-right-full {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+.animate-in { animation-fill-mode: both; }
+.slide-in-from-right-full { animation-name: slide-in-from-right-full; }
+.duration-300 { animation-duration: 300ms; }

@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZK Resume Protocol | Prove Your Credentials. Reveal Nothing.</title>
+    <meta name="description" content="Privacy-preserving academic verification powered by ZK-SNARKs and EAS.">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="bg-grid"></div>
+    <div class="bg-glow"></div>
+
+    <header>
+        <div class="logo" onclick="showSection('hero')">
+            <div class="logo-icon">Z</div>
+            <span>ZK Resume <span class="gradient-text">Protocol</span></span>
+        </div>
+        <nav>
+            <a href="#" onclick="showSection('hero')" id="nav-hero" class="active">Home</a>
+            <a href="#" onclick="showSection('issuer')" id="nav-issuer">Issue</a>
+            <a href="#" onclick="showSection('holder')" id="nav-holder">My Credentials</a>
+            <a href="#" onclick="showSection('verifier')" id="nav-verifier">Verify</a>
+            <a href="#" onclick="showSection('explorer')" id="nav-explorer">Explorer</a>
+        </nav>
+        <button class="btn btn-outline" id="connect-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0-2 2c0 1.1.9 2 2 2h4v-4h-4z"></path></svg>
+            Connect Wallet
+        </button>
+    </header>
+
+    <main class="container">
+        <!-- SCREEN 1: HERO -->
+        <section id="hero" class="active">
+            <h1 class="hero-title">Prove Your Credentials.<br><span class="gradient-text">Reveal Nothing.</span></h1>
+            <p class="hero-subtitle">Privacy-preserving academic verification powered by ZK-SNARKs and Ethereum Attestation Service (EAS).</p>
+            <div class="hero-btns">
+                <button class="btn btn-primary" onclick="showSection('issuer')">Issue Credential</button>
+                <button class="btn btn-outline" onclick="showSection('verifier')">Verify Credential</button>
+            </div>
+            
+            <div class="stats-bar glass">
+                <div class="stat-item">
+                    <span class="stat-dot"></span>
+                    <span>0 Gas for Holders</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot"></span>
+                    <span>100% On-chain Verified</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-dot"></span>
+                    <span>EAS Powered</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 2: UNIVERSITY DASHBOARD -->
+        <section id="issuer">
+            <div class="page-header">
+                <div>
+                    <h2>Issue Academic Attestation</h2>
+                    <p class="text-muted">Create a secure, verifiable record for a student.</p>
+                </div>
+                <div class="status-badge success">University Verified ✓</div>
+            </div>
+            
+            <div class="dashboard-grid">
+                <div class="glass form-card">
+                    <form id="issue-form">
+                        <div class="form-group">
+                            <label>Student ID (bytes32 hash)</label>
+                            <input type="text" placeholder="0x..." value="0x72a5...c9f1">
+                        </div>
+                        <div class="form-group">
+                            <label>Degree Name</label>
+                            <input type="text" placeholder="e.g. B.S. Computer Science">
+                        </div>
+                        <div class="form-group">
+                            <label>CGPA (0.0 - 10.0)</label>
+                            <input type="number" step="0.1" min="0" max="10" placeholder="9.5">
+                        </div>
+                        <div class="form-group">
+                            <label>Graduation Year</label>
+                            <select>
+                                <option>2024</option>
+                                <option>2023</option>
+                                <option>2022</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Generate Off-chain Attestation</button>
+                    </form>
+
+                    <div id="issue-output" class="output-panel" style="display: none;">
+                        <div class="code-block" id="attestation-json"></div>
+                        <div class="status-badge success">Gasless ✓ | EAS Signed ✓ | Schema UID: 0x82...f9</div>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 32px;">
+                    <h3>Schema Structure</h3>
+                    <p class="text-muted" style="font-size: 0.875rem; margin-bottom: 20px;">Visualizing the EAS schema data types.</p>
+                    <div class="code-block" style="color: var(--text-muted);">
+{
+  "studentID": "bytes32",
+  "degree": "string",
+  "cgpa": "uint32",
+  "year": "uint16"
+}
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 3: STUDENT DASHBOARD -->
+        <section id="holder">
+            <div class="page-header">
+                <div>
+                    <h2>My ZK Credentials</h2>
+                    <p class="text-muted">Manage your attestations and generate zero-knowledge proofs.</p>
+                </div>
+                <div class="address glass" style="padding: 8px 16px; border-radius: 8px;">
+                    0x83B...4F9E <span style="margin-left: 8px; cursor: pointer; color: var(--secondary);">📋</span>
+                </div>
+            </div>
+
+            <div class="dashboard-grid">
+                <div id="credential-list">
+                    <div class="glass credential-card">
+                        <div class="card-header">
+                            <div class="uni-logo">MIT</div>
+                            <div>
+                                <h4>M.S. Artificial Intelligence</h4>
+                                <p class="text-muted">Massachusetts Institute of Technology</p>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <label>CGPA</label>
+                                <div class="private-overlay">█████ PRIVATE</div>
+                            </div>
+                            <div class="status-badge success">Attested | ZK Proof Ready</div>
+                        </div>
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-primary" onclick="generateProof(this)">Generate ZK Proof</button>
+                            <button class="btn btn-outline">Share Link</button>
+                        </div>
+                        
+                        <div class="progress-container" style="display: none;">
+                            <div class="step" id="step-1"><span class="step-dot"></span> Compile Circuit</div>
+                            <div class="step" id="step-2"><span class="step-dot"></span> Generate Witness</div>
+                            <div class="step" id="step-3"><span class="step-dot"></span> Compute SNARK</div>
+                            <div class="step" id="step-4"><span class="step-dot"></span> Proof Ready</div>
+                        </div>
+
+                        <div class="proof-downloads" style="display: none; gap: 12px; margin-top: 16px;">
+                            <button class="btn btn-outline" style="font-size: 0.8rem;">proof.json ↓</button>
+                            <button class="btn btn-outline" style="font-size: 0.8rem;">vkey.json ↓</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 32px; height: fit-content;">
+                    <h3>Privacy Stats</h3>
+                    <div style="margin-top: 20px; display: flex; flex-direction: column; gap: 16px;">
+                        <div>
+                            <label>Data Leaked</label>
+                            <div style="color: var(--secondary); font-size: 1.5rem; font-weight: 700;">0 bytes</div>
+                        </div>
+                        <div>
+                            <label>Proofs Generated</label>
+                            <div style="color: var(--primary); font-size: 1.5rem; font-weight: 700;">12</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 4: EMPLOYER DASHBOARD -->
+        <section id="verifier">
+            <div class="page-header">
+                <h2>Verify Credential</h2>
+                <p class="text-muted">Instantly verify candidate proofs without seeing sensitive data.</p>
+            </div>
+
+            <div class="glass form-card" style="max-width: 800px;">
+                <div class="form-group">
+                    <label>Credential Link or Holder Address</label>
+                    <input type="text" placeholder="https://zkresume.protocol/share/..." value="https://zkresume.protocol/share/0x83B...4F9E">
+                </div>
+                
+                <div class="slider-container">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+                        <label>Minimum CGPA Required</label>
+                        <span id="cgpa-val" style="color: var(--primary); font-weight: 700;">8.5</span>
+                    </div>
+                    <input type="range" min="6.0" max="9.5" step="0.1" value="8.5" id="cgpa-slider">
+                </div>
+
+                <button class="btn btn-secondary" style="width: 100%; margin-top: 20px;" id="verify-btn">Verify On-chain</button>
+
+                <!-- SUCCESS STATE -->
+                <div id="verify-success" class="glass result-card success">
+                    <div style="font-size: 3rem; margin-bottom: 16px;">✓</div>
+                    <h3 style="color: var(--success); margin-bottom: 8px;">Qualified</h3>
+                    <p class="text-muted">CGPA meets threshold | Verified on Sepolia</p>
+                    <div class="hash" style="margin-top: 24px; font-size: 0.8rem;">
+                        TX: <a href="#" style="color: var(--secondary);">0x4e2...d8a2</a>
+                    </div>
+                </div>
+
+                <!-- FAIL STATE -->
+                <div id="verify-fail" class="glass result-card error">
+                    <div style="font-size: 3rem; margin-bottom: 16px;">✗</div>
+                    <h3 style="color: var(--error); margin-bottom: 8px;">Not Qualified</h3>
+                    <p class="text-muted">Proof invalid or threshold not met</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- SCREEN 5: EXPLORER -->
+        <section id="explorer">
+            <div class="page-header">
+                <h2>Technical Explorer</h2>
+                <div class="status-badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted);">Network: Sepolia</div>
+            </div>
+
+            <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                <div class="glass" style="padding: 32px;">
+                    <h3>Contract & Schema</h3>
+                    <div style="margin-top: 24px;">
+                        <label>Contract Address</label>
+                        <div class="hash">0x7C3A...ED44 <span class="status-badge success" style="margin-left: 8px;">Verified</span></div>
+                    </div>
+                    <div style="margin-top: 16px;">
+                        <label>Schema UID</label>
+                        <div class="hash">0x82...f93e</div>
+                    </div>
+                </div>
+
+                <div class="glass" style="padding: 32px;">
+                    <h3>Circuit Stats</h3>
+                    <div style="margin-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div>
+                            <label>Constraints</label>
+                            <div style="font-size: 1.25rem;">1,024</div>
+                        </div>
+                        <div>
+                            <label>Proving Time</label>
+                            <div style="font-size: 1.25rem;">~2.1s</div>
+                        </div>
+                        <div>
+                            <label>Proof Size</label>
+                            <div style="font-size: 1.25rem;">256 bytes</div>
+                        </div>
+                        <div>
+                            <label>Backend</label>
+                            <div style="font-size: 1.25rem;">SnarkJS</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="glass" style="margin-top: 32px; padding: 32px;">
+                <h3>Recent Verifications</h3>
+                <table style="width: 100%; margin-top: 24px; text-align: left; border-collapse: collapse;">
+                    <thead>
+                        <tr style="color: var(--text-muted); font-size: 0.875rem;">
+                            <th style="padding-bottom: 16px;">Holder</th>
+                            <th style="padding-bottom: 16px;">Threshold</th>
+                            <th style="padding-bottom: 16px;">Result</th>
+                            <th style="padding-bottom: 16px;">TX Hash</th>
+                        </tr>
+                    </thead>
+                    <tbody style="font-size: 0.875rem;">
+                        <tr style="border-top: 1px solid var(--border);">
+                            <td class="hash" style="padding: 16px 0;">0x83B...4F9E</td>
+                            <td>8.5</td>
+                            <td style="color: var(--success);">SUCCESS</td>
+                            <td class="hash">0x4e2...d8a2</td>
+                        </tr>
+                        <tr style="border-top: 1px solid var(--border);">
+                            <td class="hash" style="padding: 16px 0;">0x12a...7c3d</td>
+                            <td>9.0</td>
+                            <td style="color: var(--error);">FAIL</td>
+                            <td class="hash">0x9b1...c4e5</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <!-- Wallet Modal -->
+    <div class="modal-overlay" id="wallet-modal">
+        <div class="glass modal">
+            <h3 style="margin-bottom: 24px;">Connect Wallet</h3>
+            <div style="display: flex; flex-direction: column; gap: 12px;">
+                <button class="btn btn-outline" style="justify-content: flex-start;" onclick="connectWallet('MetaMask')">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/3/36/MetaMask_Logo.svg" width="24" style="margin-right: 12px;">
+                    MetaMask
+                </button>
+                <button class="btn btn-outline" style="justify-content: flex-start;" onclick="connectWallet('WalletConnect')">
+                    <img src="https://raw.githubusercontent.com/WalletConnect/walletconnect-assets/master/Logo/Blue%20(Default)/Logo.svg" width="24" style="margin-right: 12px;">
+                    WalletConnect
+                </button>
+            </div>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 24px; border: none; color: var(--text-muted);" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div id="toast-container"></div>
+
+    <script src="main.js"></script>
+</body>
+</html>

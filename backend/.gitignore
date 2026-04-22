@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+*.ptau
+circuits/build/
+artifacts/
+cache/
+typechain-types/
+deployments/*.json
+gas-report.txt
+*.wtns
+*.zkey

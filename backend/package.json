@@ -1,0 +1,41 @@
+{
+  "name": "zk-resume-protocol-backend",
+  "version": "1.0.0",
+  "description": "Pure decentralized ZK Resume Protocol — Circom + Solidity + EAS",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "test:gas": "REPORT_GAS=true hardhat test",
+    "deploy:sepolia": "hardhat run scripts/deploy.ts --network sepolia",
+    "verify:sepolia": "hardhat verify --network sepolia",
+    "circuit:compile": "circom circuits/resume.circom --r1cs --wasm --sym -o circuits/build",
+    "circuit:ceremony": "node scripts/ceremony.js",
+    "circuit:setup": "node scripts/setup-ceremony.js",
+    "proof:generate": "ts-node scripts/generate-proof.ts",
+    "eas:attest": "ts-node scripts/eas-attest.ts",
+    "slither": "slither contracts/ --exclude-dependencies",
+    "clean": "hardhat clean && rimraf circuits/build"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@types/chai": "^4.3.11",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.5",
+    "chai": "^4.3.10",
+    "circomlibjs": "^0.1.7",
+    "hardhat": "^2.19.5",
+    "hardhat-gas-reporter": "^1.0.9",
+    "rimraf": "^5.0.5",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "@ethereum-attestation-service/eas-sdk": "^2.1.0",
+    "@openzeppelin/contracts": "^5.0.1",
+    "circomlib": "^2.0.5",
+    "dotenv": "^16.4.1",
+    "ethers": "^6.10.0",
+    "ffjavascript": "^0.3.0",
+    "snarkjs": "^0.7.3"
+  }
+}
