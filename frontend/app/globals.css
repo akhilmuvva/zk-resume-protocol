@@ -77,3 +77,13 @@
 .animate-in { animation-fill-mode: both; }
 .slide-in-from-right-full { animation-name: slide-in-from-right-full; }
 .duration-300 { animation-duration: 300ms; }
+
+@keyframes gradient-x {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}

@@ -7,6 +7,8 @@ import { analyzeResume, ATSResult } from "@/lib/analyze";
 import { UploadCloud, FileText, CheckCircle2, AlertCircle } from "lucide-react";
 // @ts-ignore
 import anime from "animejs";
+import { useWriteContract, useSignMessage } from "wagmi";
+import { REGISTRY_CONTRACT } from "@/lib/contract";
 
 // @ts-ignore
 import { buildPoseidon } from "circomlibjs";
@@ -21,6 +23,15 @@ export default function AnalyzePage() {
   const [error, setError] = useState<string | null>(null);
   
   const [zkHash, setZkHash] = useState<string | null>(null);
+  const [candidateAddress, setCandidateAddress] = useState("");
+  const [isBinding, setIsBinding] = useState(false);
+  const [bindSuccess, setBindSuccess] = useState(false);
+  const [recordSuccess, setRecordSuccess] = useState(false);
+  const [aiProgress, setAiProgress] = useState(0);
+  const [aiStatus, setAiStatus] = useState("");
+
+  const { writeContractAsync, isPending: isWriting } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const resultRef = useRef<HTMLDivElement>(null);
@@ -54,6 +65,8 @@ export default function AnalyzePage() {
     }
   };
 
+  const [ipfsCID, setIpfsCID] = useState<string | null>(null);
+
   const handleAnalyze = async () => {
     if (!file) {
       setError("Please upload a resume PDF.");
@@ -68,27 +81,35 @@ export default function AnalyzePage() {
     setIsAnalyzing(true);
     setResult(null);
     setZkHash(null);
+    setIpfsCID(null);
 
     try {
-      // 1. Parse PDF
-      const formData = new FormData();
-      formData.append("file", file);
-      
-      const parseRes = await fetch("/api/parse-pdf", {
-        method: "POST",
-        body: formData,
-      });
-      
-      if (!parseRes.ok) throw new Error("Failed to parse PDF");
-      const { text } = await parseRes.json();
+      // 1. Parse PDF LOCALLY (Decentralized)
+      const { extractTextFromPDF, analyzeResumeLocally } = await import("@/lib/local-ai");
+      const text = await extractTextFromPDF(file);
       
       if (!text || text.trim().length === 0) {
-        throw new Error("Could not extract text from PDF");
+        throw new Error("Could not extract text from PDF locally.");
       }
 
-      // 2. Analyze using Claude API
-      const atsResult = await analyzeResume(text, mode, jobDescription);
-      setResult(atsResult);
+      // 2. Analyze using Local AI (Decentralized - Transformers.js)
+      // This function now handles IPFS simulation internally and returns the CID
+      const atsResult = await analyzeResumeLocally(text, jobDescription, (p: any) => {
+        if (p.status === "progress") {
+          setAiProgress(p.progress);
+        }
+        if (p.status === "initiate") {
+          setAiStatus(`Initializing ${p.file}...`);
+        }
+        if (p.status === "download") {
+          setAiStatus(`Downloading AI model: ${p.file}...`);
+        }
+        if (p.status === "done") {
+          setAiStatus("Model ready!");
+        }
+      });
+      setResult(atsResult as any);
+      setIpfsCID(atsResult.ipfsCID);
 
       // 3. ZK Binding Hash
       if (mode === "student") {
@@ -106,9 +127,47 @@ export default function AnalyzePage() {
 
     } catch (err: any) {
       console.error(err);
-      setError(err.message || "An unexpected error occurred.");
+      setError(err.message || "An unexpected error occurred during local analysis.");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  const handleBindEAS = async () => {
+    if (!zkHash) return;
+    setIsBinding(true);
+    setBindSuccess(false);
+    try {
+      await signMessageAsync({ message: `I attest that my ZK Resume ATS fingerprint is:\n\n${zkHash}` });
+      setBindSuccess(true);
+    } catch(err) {
+      console.error(err);
+    } finally {
+      setIsBinding(false);
+    }
+  };
+
+  const handleRecordVerdict = async () => {
+    if (!candidateAddress || !result || !ipfsCID) {
+      setError("Candidate Address, Result, and IPFS CID are required.");
+      return;
+    }
+    setRecordSuccess(false);
+    try {
+      await writeContractAsync({
+        ...REGISTRY_CONTRACT,
+        functionName: "recordATSVerdict",
+        args: [
+          candidateAddress as `0x${string}`,
+          result.qualified || false,
+          BigInt(result.generalScore),
+          ipfsCID // New decentralized storage parameter
+        ]
+      });
+      setRecordSuccess(true);
+    } catch(err) {
+      console.error(err);
+      setError("Transaction failed. Check console.");
     }
   };
 
@@ -204,14 +263,26 @@ export default function AnalyzePage() {
 
         {/* Job Description (Employer Mode Only) */}
         {mode === "employer" ? (
-          <div className="flex flex-col">
-            <h2 className="text-lg font-bold font-syne mb-4 text-slate-200">Job Description</h2>
-            <textarea
-              className="flex-1 w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-slate-300 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono text-sm resize-none"
-              placeholder="Paste the job description here..."
-              value={jobDescription}
-              onChange={(e) => setJobDescription(e.target.value)}
-            />
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col">
+              <h2 className="text-lg font-bold font-syne mb-2 text-slate-200">Candidate Address</h2>
+              <input
+                type="text"
+                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-slate-300 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono text-sm"
+                placeholder="0x..."
+                value={candidateAddress}
+                onChange={(e) => setCandidateAddress(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col flex-1">
+              <h2 className="text-lg font-bold font-syne mb-2 text-slate-200">Job Description</h2>
+              <textarea
+                className="flex-1 w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-slate-300 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all font-mono text-sm resize-none min-h-[140px]"
+                placeholder="Paste the job description here..."
+                value={jobDescription}
+                onChange={(e) => setJobDescription(e.target.value)}
+              />
+            </div>
           </div>
         ) : (
           <div className="flex flex-col justify-center items-start glass p-8">
@@ -245,6 +316,24 @@ export default function AnalyzePage() {
         >
           {isAnalyzing ? "Analyzing Resume..." : "Run ATS Analysis"}
         </button>
+
+        {isAnalyzing && (
+          <div className="mt-8 w-full max-w-lg animate-in fade-in zoom-in duration-500">
+            <div className="flex justify-between items-end mb-2">
+              <span className="text-xs font-mono text-slate-400 uppercase tracking-widest">{aiStatus || "Processing..."}</span>
+              <span className="text-xs font-mono text-violet-400">{Math.round(aiProgress)}%</span>
+            </div>
+            <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden border border-white/5">
+              <div 
+                className="h-full bg-gradient-to-r from-violet-600 via-cyan-500 to-violet-600 bg-[length:200%_auto] animate-gradient-x transition-all duration-300"
+                style={{ width: `${aiProgress}%` }}
+              />
+            </div>
+            <p className="mt-4 text-center text-[10px] text-slate-500 uppercase tracking-[0.2em]">
+              Decentralized Inference • No Data Leaves Your Device
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Results Section */}
@@ -346,11 +435,22 @@ export default function AnalyzePage() {
                   <p className="text-sm text-slate-400 mb-4">
                     Your ATS score can be securely bound to your decentralized ZK credential.
                   </p>
-                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-slate-500 break-all mb-4">
+                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-slate-500 break-all mb-2">
                     Resume fingerprint: {zkHash}
                   </div>
-                  <button className="w-full py-3 bg-violet-600 hover:bg-violet-500 text-white font-medium rounded-lg transition-colors">
-                    Bind to EAS Attestation
+                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-violet-500/70 break-all mb-4">
+                    IPFS Metadata: {ipfsCID}
+                  </div>
+                  <button 
+                    onClick={handleBindEAS}
+                    disabled={isBinding || bindSuccess}
+                    className={`w-full py-3 font-medium rounded-lg transition-colors ${
+                      bindSuccess 
+                        ? "bg-emerald-600 text-white" 
+                        : "bg-violet-600 hover:bg-violet-500 text-white"
+                    }`}
+                  >
+                    {isBinding ? "Signing..." : bindSuccess ? "Successfully Bound ✓" : "Bind to EAS Attestation"}
                   </button>
                 </div>
               )}
@@ -362,9 +462,20 @@ export default function AnalyzePage() {
                  <p className="text-sm text-slate-400 mb-4">
                    Push this candidate's qualified status directly to the ResumeRegistry smart contract.
                  </p>
-                 <button className="w-full py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg transition-colors">
-                   Record Verdict On-chain
-                 </button>
+                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-emerald-500/70 break-all mb-4">
+                    IPFS Metadata: {ipfsCID}
+                  </div>
+                  <button 
+                    onClick={handleRecordVerdict}
+                    disabled={isWriting || recordSuccess}
+                    className={`w-full py-3 font-medium rounded-lg transition-colors ${
+                      recordSuccess 
+                        ? "bg-emerald-700 text-emerald-200" 
+                        : "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    }`}
+                  >
+                    {isWriting ? "Recording..." : recordSuccess ? "Recorded On-chain ✓" : "Record Verdict On-chain"}
+                  </button>
                </div>
               )}
             </div>

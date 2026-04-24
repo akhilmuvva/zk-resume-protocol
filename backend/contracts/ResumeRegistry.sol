@@ -51,6 +51,9 @@ contract ResumeRegistry is ReentrancyGuard, Ownable {
     /// @notice EAS attestation UIDs already consumed (replay protection)
     mapping(bytes32 => bool) public usedAttestations;
 
+    /// @notice Employer recorded ATS verdicts (employer => candidate => verdict)
+    mapping(address => mapping(address => ATSVerdict)) public employerVerdicts;
+
     // ─────────────────────────────────────────────────────────────────
     // Structs
     // ─────────────────────────────────────────────────────────────────
@@ -62,6 +65,13 @@ contract ResumeRegistry is ReentrancyGuard, Ownable {
         bytes32 attestationUID;     // EAS attestation UID
         address universityAddress;  // Which university issued
         uint256 blockNumber;
+    }
+
+    struct ATSVerdict {
+        bool qualified;
+        uint256 score;
+        uint256 timestamp;
+        string ipfsCID;
     }
 
     // ─────────────────────────────────────────────────────────────────
@@ -82,6 +92,9 @@ contract ResumeRegistry is ReentrancyGuard, Ownable {
 
     /// @notice Emitted when verification fails (for analytics)
     event VerificationFailed(address indexed holder, string reason);
+
+    /// @notice Emitted when an employer records an ATS verdict
+    event ATSVerdictRecorded(address indexed employer, address indexed candidate, bool qualified, uint256 score, string ipfsCID);
 
     // ─────────────────────────────────────────────────────────────────
     // Errors
@@ -242,6 +255,20 @@ contract ResumeRegistry is ReentrancyGuard, Ownable {
     // ─────────────────────────────────────────────────────────────────
     // Admin: Register Universities
     // ─────────────────────────────────────────────────────────────────
+
+    /**
+     * @notice Record ATS verdict for a candidate.
+     */
+    function recordATSVerdict(address candidate, bool qualified, uint256 score, string calldata ipfsCID) external {
+        if (candidate == address(0)) revert ZeroAddress();
+        employerVerdicts[msg.sender][candidate] = ATSVerdict({
+            qualified: qualified,
+            score: score,
+            timestamp: block.timestamp,
+            ipfsCID: ipfsCID
+        });
+        emit ATSVerdictRecorded(msg.sender, candidate, qualified, score, ipfsCID);
+    }
 
     /**
      * @notice Register a university as a valid EAS signer.

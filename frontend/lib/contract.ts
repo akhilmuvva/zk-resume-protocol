@@ -35,6 +35,18 @@ export const RESUME_REGISTRY_ABI = [
     ],
     outputs: [],
   },
+  {
+    name: "recordATSVerdict",
+    type: "function",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "candidate", type: "address" },
+      { name: "qualified", type: "bool"    },
+      { name: "score",     type: "uint256" },
+      { name: "ipfsCID",   type: "string"  },
+    ],
+    outputs: [],
+  },
 
   // Read
   {
@@ -112,8 +124,9 @@ export const RESUME_REGISTRY_ABI = [
 ] as const;
 
 // ── Wagmi contract config ───────────────────────────────────────────
+export const REGISTRY_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 export const REGISTRY_CONTRACT = {
-  address: CONTRACTS.RESUME_REGISTRY,
+  address: REGISTRY_ADDRESS,
   abi: RESUME_REGISTRY_ABI,
 } as const;
 

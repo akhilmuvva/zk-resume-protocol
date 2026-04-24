@@ -4,13 +4,13 @@
 
 ZK Resume Protocol is a decentralized, privacy-preserving academic credential verification system. It leverages **Zero-Knowledge Proofs (ZK-SNARKs)** and the **Ethereum Attestation Service (EAS)** to allow students to prove they meet a specific GPA/Degree threshold for a job without ever revealing their actual grades. 
 
-Additionally, it features an **AI-powered Applicant Tracking System (ATS) Scorer** built with Claude 3.5 Sonnet, which generates cryptographic hashes of the resume score to bind it to the decentralized credential.
+Additionally, it features a **fully decentralized AI-powered Applicant Tracking System (ATS) Scorer** built with **Transformers.js (v3)**, which runs entirely in the student's browser. It generates cryptographic hashes of the resume score to bind it to the decentralized credential via the **Ethereum Attestation Service (EAS)**.
 
 ---
 
 ## 🏗️ Architecture & Flow
 
-The system operates with a fully decentralized architecture—no backend APIs, no databases, and no trusted intermediaries.
+The system operates with a **purely decentralized architecture**—no backend APIs, no centralized LLMs, no databases, and no trusted intermediaries.
 
 1. **🏛️ University (Issuer):** 
    - Signs student credential data (Student ID hash, Degree, CGPA, Year) using the EAS SDK. 
@@ -20,7 +20,7 @@ The system operates with a fully decentralized architecture—no backend APIs, n
    - Computes a ZK-SNARK (Groth16) entirely inside their browser using `snarkjs` and WebAssembly.
    - The circuit verifies that the student's *actual CGPA* is `>=` the *employer's required threshold*.
    - Only the proof and the public threshold are exported. The raw CGPA never leaves the device.
-   - *AI ATS Analysis:* Students can upload their PDF resume to get an AI-generated ATS score, which is hashed via Poseidon and ready to be bound to their ZK credential.
+    - *Local AI Analysis:* Students upload their PDF resume to get an AI-generated ATS score using a local **ONNX model (all-MiniLM-L6-v2)**. The score is hashed via Poseidon and ready to be bound to their ZK credential.
 3. **🏢 Employer (Verifier):**
    - Receives the cryptographic proof from the student.
    - Calls the `verifyCredential` function on the `ResumeRegistry` smart contract deployed on the Sepolia Testnet.
@@ -43,7 +43,8 @@ The system operates with a fully decentralized architecture—no backend APIs, n
 - **Wagmi v2 & RainbowKit:** Wallet connection and contract interaction.
 - **EAS SDK:** Off-chain attestations.
 - **Anime.js:** Fluid micro-animations for the UI components.
-- **Claude API (Anthropic):** AI-powered ATS resume parsing and scoring.
+- **Transformers.js (v3):** Local, client-side NLP using ONNX Runtime for semantic similarity and ATS scoring.
+- **Pinata (IPFS):** Decentralized metadata storage for ATS verdicts.
 
 ---
 
@@ -99,7 +100,9 @@ npm install
 Create a `.env.local` file and add your Anthropic API Key for the ATS feature:
 \`\`\`env
 NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_id
-ANTHROPIC_API_KEY=your_claude_api_key
+NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_id
+PINATA_JWT=your_pinata_jwt_for_metadata_storage
+NEXT_PUBLIC_GATEWAY_URL=your_pinata_gateway
 \`\`\`
 
 Start the development server:
@@ -114,7 +117,7 @@ The app will be running at `http://localhost:3000`.
 
 - **No Data Leaks:** The ZK circuit uses a `GreaterEqThan` constraint. The raw CGPA is passed as a *private signal* and is fundamentally impossible to extract from the generated proof.
 - **Replay Protection:** The `ResumeRegistry.sol` contract hashes the proof's public parameters to ensure a student cannot reuse the same exact proof submission twice.
-- **Serverless AI Parsing:** The PDF text extraction and Claude ATS scoring happen securely via Next.js serverless route handlers, ensuring your API key is never exposed to the client.
+- **Client-side AI Parsing:** PDF text extraction and AI scoring happen **entirely in the browser** via Web Workers and Transformers.js. No resume data ever leaves your device, ensuring maximum privacy and eliminating centralized API dependency.
 
 ---
 *Built with ❤️ for Web3 Privacy & Verifiable Credentials.*
