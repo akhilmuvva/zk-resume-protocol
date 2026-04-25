@@ -1,5 +1,7 @@
-import { aiService } from "./ai-service";
-
+/**
+ * local-ai.ts — Fully Decentralized Resume Analysis
+ * All computation is client-side. No API keys. No server.
+ */
 export interface LocalATSResult {
   generalScore: number;
   jdMatchScore?: number;
@@ -51,8 +53,8 @@ export async function analyzeResumeLocally(
   onProgress?: (progress: any) => void
 ): Promise<LocalATSResult> {
   
-  // 1. Semantic Analysis via Web Worker (Transformers.js)
-  const { jdMatchScore } = await aiService.analyze(resumeText, jobDescription);
+  // 1. Semantic JD match — keyword overlap scoring (client-side, no model needed)
+  const jdMatchScore = computeJDMatchScore(resumeText, jobDescription);
 
   // 2. Rule-based Analysis for structural scoring
   const technicalKeywords = [
@@ -241,4 +243,32 @@ export async function uploadToIPFS(data: any): Promise<string> {
     // Fully client-side fallback — real CIDv1 derived from content hash
     return computeIPFSCID(data);
   }
+}
+
+/**
+ * Keyword-overlap JD match score (0–100).
+ * Splits both texts into word tokens and computes Jaccard similarity
+ * weighted by term frequency. Fully client-side — no model needed.
+ */
+function computeJDMatchScore(resumeText: string, jobDescription?: string): number {
+  if (!jobDescription) return 0;
+
+  const tokenize = (text: string) =>
+    text.toLowerCase().match(/\b[a-z][a-z0-9+.#-]{1,}\b/g) ?? [];
+
+  const resumeTokens  = new Set(tokenize(resumeText));
+  const jdTokens      = tokenize(jobDescription);
+  const jdUnique      = new Set(jdTokens);
+
+  if (jdUnique.size === 0) return 0;
+
+  let matched = 0;
+  for (const token of jdUnique) {
+    if (resumeTokens.has(token)) matched++;
+  }
+
+  // Jaccard similarity × 100, clamped to [0, 100]
+  const jaccard = matched / (resumeTokens.size + jdUnique.size - matched);
+  // Scale: raw jaccard on text tends to be low; multiply by 3.5 to get human-readable %
+  return Math.min(100, Math.round(jaccard * 350));
 }

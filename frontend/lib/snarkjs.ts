@@ -31,7 +31,7 @@ export interface GeneratedProof {
     pA: [bigint, bigint];
     pB: [[bigint, bigint], [bigint, bigint]];
     pC: [bigint, bigint];
-    pubSignals: [bigint, bigint];
+    pubSignals: [bigint, bigint, bigint];   // [qualified, threshold, studentIdHash]
   };
 }
 
@@ -91,7 +91,7 @@ export async function generateProof(
 
     // ── Step 3: Generate witness ──────────────────────────────────
     onStep("witness", "Generating witness...");
-    const wasmPath = "/circuits/resume_js/resume.wasm";
+    const wasmPath = "/circuits/resume.wasm";
     const zkeyPath = "/circuits/resume_final.zkey";
 
     // Fetch WASM file
@@ -139,7 +139,7 @@ export async function generateProof(
         pA: parsed[0] as [bigint, bigint],
         pB: parsed[1] as [[bigint, bigint], [bigint, bigint]],
         pC: parsed[2] as [bigint, bigint],
-        pubSignals: parsed[3] as [bigint, bigint],
+        pubSignals: parsed[3] as [bigint, bigint, bigint],
       },
     };
   } catch (err: any) {
