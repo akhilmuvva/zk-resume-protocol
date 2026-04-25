@@ -1,0 +1,15 @@
+# AI / Agent related files
+AGENTS.md
+CLAUDE.md
+agent/
+.gemini/
+brain/
+artifacts/
+scratch/
+agentic_task*
+*.md.tmp
+
+# General
+node_modules/
+.env*
+.DS_Store
