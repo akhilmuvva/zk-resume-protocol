@@ -5,8 +5,7 @@ import { ATSScoreRing } from "@/components/ATSScoreRing";
 import { SkillGapChart } from "@/components/SkillGapChart";
 import { analyzeResume, ATSResult } from "@/lib/analyze";
 import { UploadCloud, FileText, CheckCircle2, AlertCircle } from "lucide-react";
-// @ts-ignore
-import anime from "animejs";
+import { animate, stagger } from "animejs";
 import { useWriteContract, useSignMessage } from "wagmi";
 import { REGISTRY_CONTRACT } from "@/lib/contract";
 
@@ -175,14 +174,12 @@ export default function AnalyzePage() {
   useEffect(() => {
     if (result && resultRef.current) {
       const bars = resultRef.current.querySelectorAll('.section-bar-fill');
-      anime({
-        targets: bars,
-        width: function(el: HTMLElement) {
-          return el.getAttribute('data-score') + '%';
-        },
-        easing: 'easeOutQuart',
+      // anime.js v4: animate(targets, params)
+      animate(bars, {
+        width: (el: any) => ((el as HTMLElement).getAttribute('data-score') ?? '0') + '%',
+        ease: 'outQuart',
         duration: 1500,
-        delay: anime.stagger(100)
+        delay: stagger(100),
       });
     }
   }, [result]);

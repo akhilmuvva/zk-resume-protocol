@@ -31,11 +31,12 @@ export async function POST(request: Request) {
     });
 
     const data = await request.json();
-    const upload = await pinata.upload.json(data);
+    // Pinata SDK v2: upload.public.json(data) → returns { cid, ... }
+    const upload = await pinata.upload.public.json(data);
 
     return NextResponse.json({
-      cid: upload.IpfsHash,
-      url: `https://${process.env.NEXT_PUBLIC_GATEWAY_URL || "gateway.pinata.cloud"}/ipfs/${upload.IpfsHash}`,
+      cid: upload.cid,
+      url: `https://${process.env.NEXT_PUBLIC_GATEWAY_URL || "gateway.pinata.cloud"}/ipfs/${upload.cid}`,
       pinned: true,
     });
   } catch (error: any) {

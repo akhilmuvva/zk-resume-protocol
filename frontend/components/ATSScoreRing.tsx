@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// @ts-ignore
-import anime from "animejs";
+import { animate } from "animejs";
 
 export function ATSScoreRing({ score, label, color }: { score: number; label: string; color?: string }) {
   const circleRef = useRef<SVGCircleElement>(null);
-  const textRef = useRef<HTMLDivElement>(null);
   const [displayScore, setDisplayScore] = useState(0);
 
   const radius = 50;
@@ -16,38 +14,34 @@ export function ATSScoreRing({ score, label, color }: { score: number; label: st
   // Determine color based on score if not explicitly provided
   let finalColor = color;
   if (!color || color === "#5eead4") {
-    if (score < 50) finalColor = "#ef4444"; // red
-    else if (score < 70) finalColor = "#f59e0b"; // amber
-    else finalColor = "#4ade80"; // green
+    if (score < 50) finalColor = "#ef4444";       // red
+    else if (score < 70) finalColor = "#f59e0b";  // amber
+    else finalColor = "#4ade80";                   // green
   }
 
   useEffect(() => {
-    if (!circleRef.current || !textRef.current) return;
+    if (!circleRef.current) return;
 
     // Reset before animation
     circleRef.current.style.strokeDashoffset = String(circumference);
-    
-    // Animate the stroke dashoffset
-    anime({
-      targets: circleRef.current,
-      strokeDashoffset: [circumference, circumference - (score / 100) * circumference],
-      easing: "easeOutQuart",
+
+    // Animate the stroke dashoffset (animejs v4 API)
+    animate(circleRef.current, {
+      strokeDashoffset: circumference - (score / 100) * circumference,
+      ease: "outQuart",
       duration: 1200,
     });
 
-    // Animate the text number
+    // Animate the text counter
     const obj = { value: 0 };
-    anime({
-      targets: obj,
+    animate(obj, {
       value: score,
-      round: 1,
-      easing: "easeOutQuart",
+      ease: "outQuart",
       duration: 1200,
-      update: function() {
-        setDisplayScore(obj.value);
-      }
+      onUpdate: () => {
+        setDisplayScore(Math.round(obj.value));
+      },
     });
-
   }, [score, circumference]);
 
   return (
@@ -75,7 +69,7 @@ export function ATSScoreRing({ score, label, color }: { score: number; label: st
         />
       </svg>
       <div className="absolute flex flex-col items-center justify-center pointer-events-none">
-        <div ref={textRef} className="text-4xl font-bold font-mono text-white">
+        <div className="text-4xl font-bold font-mono text-white">
           {displayScore}
         </div>
         <div className="text-xs text-slate-400 font-mono mt-1 uppercase tracking-widest">{label}</div>

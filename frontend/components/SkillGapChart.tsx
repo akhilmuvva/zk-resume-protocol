@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-// @ts-ignore
-import anime from "animejs";
+import { animate, stagger } from "animejs";
 
 interface SkillGapChartProps {
   matchedKeywords?: string[];
@@ -16,30 +15,26 @@ export function SkillGapChart({ matchedKeywords = [], missingKeywords = [], bonu
 
   useEffect(() => {
     if (!containerRef.current) return;
-    
-    // Animate chips in
+
     const chips = containerRef.current.querySelectorAll('.skill-chip');
     if (chips.length === 0) return;
-    
-    // reset
-    anime.set(chips, { translateY: 20, opacity: 0 });
-    
-    anime({
-      targets: chips,
-      translateY: 0,
-      opacity: 1,
-      delay: anime.stagger(50),
-      easing: "easeOutExpo",
+
+    // anime.js v4: animate(targets, params)
+    animate(chips, {
+      translateY: [20, 0],
+      opacity: [0, 1],
+      delay: stagger(50),
+      ease: "outExpo",
       duration: 800,
     });
   }, [filter, matchedKeywords, missingKeywords, bonusKeywords]);
 
   const renderChip = (keyword: string, type: "matched" | "missing" | "bonus") => {
     if (filter !== "all" && filter !== type) return null;
-    
+
     let baseClass = "skill-chip flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-mono font-medium border opacity-0 ";
     let icon = "";
-    
+
     if (type === "matched") {
       baseClass += "bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
       icon = "✓";
@@ -62,14 +57,14 @@ export function SkillGapChart({ matchedKeywords = [], missingKeywords = [], bonu
   return (
     <div className="flex flex-col gap-6">
       <div className="flex gap-4 border-b border-white/10 pb-2">
-        <button 
+        <button
           onClick={() => setFilter("all")}
           className={`text-sm font-mono transition-colors ${filter === "all" ? "text-white" : "text-slate-500 hover:text-slate-300"}`}
         >
           All
         </button>
         {matchedKeywords.length > 0 && (
-          <button 
+          <button
             onClick={() => setFilter("matched")}
             className={`text-sm font-mono transition-colors ${filter === "matched" ? "text-emerald-400" : "text-slate-500 hover:text-emerald-400"}`}
           >
@@ -77,7 +72,7 @@ export function SkillGapChart({ matchedKeywords = [], missingKeywords = [], bonu
           </button>
         )}
         {missingKeywords.length > 0 && (
-          <button 
+          <button
             onClick={() => setFilter("missing")}
             className={`text-sm font-mono transition-colors ${filter === "missing" ? "text-red-400" : "text-slate-500 hover:text-red-400"}`}
           >
@@ -85,7 +80,7 @@ export function SkillGapChart({ matchedKeywords = [], missingKeywords = [], bonu
           </button>
         )}
         {bonusKeywords.length > 0 && (
-          <button 
+          <button
             onClick={() => setFilter("bonus")}
             className={`text-sm font-mono transition-colors ${filter === "bonus" ? "text-cyan-400" : "text-slate-500 hover:text-cyan-400"}`}
           >
