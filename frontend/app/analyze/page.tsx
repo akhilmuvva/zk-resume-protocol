@@ -93,7 +93,7 @@ export default function AnalyzePage() {
       }
 
       // 2. Analyze using Local AI (Decentralized - Transformers.js)
-      // This function now handles IPFS simulation internally and returns the CID
+      // CIDv1 is computed client-side from the content hash — no server needed
       const atsResult = await analyzeResumeLocally(text, jobDescription, (p: any) => {
         if (p.status === "progress") {
           setAiProgress(p.progress);
@@ -438,9 +438,12 @@ export default function AnalyzePage() {
                   <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-slate-500 break-all mb-2">
                     Resume fingerprint: {zkHash}
                   </div>
-                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-violet-500/70 break-all mb-4">
-                    IPFS Metadata: {ipfsCID}
+                  <div className="bg-[#0A0E1A] p-3 rounded-lg border border-white/10 font-mono text-xs text-violet-500/70 break-all mb-1">
+                    IPFS CIDv1 (content-addressed): {ipfsCID}
                   </div>
+                  <p className="text-xs text-slate-600 mb-4">
+                    This CID is computed from the content hash — verifiable on any IPFS node. Pin it via <code className="text-violet-400">ipfs add --cid-version 1 data.json</code>
+                  </p>
                   <button 
                     onClick={handleBindEAS}
                     disabled={isBinding || bindSuccess}

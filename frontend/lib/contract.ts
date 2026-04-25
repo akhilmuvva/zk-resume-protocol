@@ -19,7 +19,7 @@ export const RESUME_REGISTRY_ABI = [
       { name: "_pA",           type: "uint256[2]"    },
       { name: "_pB",           type: "uint256[2][2]" },
       { name: "_pC",           type: "uint256[2]"    },
-      { name: "_pubSignals",   type: "uint256[2]"    },
+      { name: "_pubSignals",   type: "uint256[3]"    },  // [qualified, threshold, studentIdHash]
       { name: "_attestationUID", type: "bytes32"     },
       { name: "_easSignature", type: "bytes"         },
     ],
@@ -152,7 +152,7 @@ export function formatVerifyArgs(
   readonly [bigint, bigint],
   readonly [readonly [bigint, bigint], readonly [bigint, bigint]],
   readonly [bigint, bigint],
-  readonly [bigint, bigint],
+  readonly [bigint, bigint, bigint],   // uint256[3]: qualified, threshold, studentIdHash
   `0x${string}`,
   `0x${string}`
 ] {
@@ -160,7 +160,7 @@ export function formatVerifyArgs(
     proof.calldata.pA,
     proof.calldata.pB,
     proof.calldata.pC,
-    proof.calldata.pubSignals,
+    proof.calldata.pubSignals as [bigint, bigint, bigint],
     attestationUID,
     easSignature,
   ] as const;

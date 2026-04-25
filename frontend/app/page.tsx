@@ -24,7 +24,7 @@ const FEATURES = [
   {
     icon: <Sparkles className="w-6 h-6 text-violet-400" />,
     title: "AI ATS Analysis",
-    desc: "Get an instant resume score from Claude 3.5 Sonnet, cryptographically bound to your credential.",
+    desc: "Get an instant resume score from local AI (Transformers.js) — fully in-browser, cryptographically bound to your credential. No data leaves your device.",
   },
 ];
 
