@@ -1,10 +1,15 @@
 import { getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { sepolia, hardhat } from "wagmi/chains";
+import { http } from "viem";
 
 export const wagmiConfig = getDefaultConfig({
   appName: "ZK Resume Protocol",
   projectId: process.env.NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID || "zk-resume-demo",
   chains: [sepolia, hardhat],
+  transports: {
+    [sepolia.id]: http("/api/rpc"),
+    [hardhat.id]: http(),
+  },
   ssr: true,
 });
 

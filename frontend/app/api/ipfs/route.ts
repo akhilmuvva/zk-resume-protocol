@@ -30,7 +30,12 @@ export async function POST(request: Request) {
       pinataGateway: process.env.NEXT_PUBLIC_GATEWAY_URL || "gateway.pinata.cloud",
     });
 
-    const data = await request.json();
+    // Security: limit payload size to prevent DoS (512 KB max)
+    const rawBody = await request.text();
+    if (rawBody.length > 512_000) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
+    const data = JSON.parse(rawBody);
     // Pinata SDK v2: upload.public.json(data) → returns { cid, ... }
     const upload = await pinata.upload.public.json(data);
 
@@ -42,7 +47,7 @@ export async function POST(request: Request) {
   } catch (error: any) {
     console.error("Pinata Upload Error:", error);
     return NextResponse.json(
-      { error: error.message || "Failed to upload to Pinata" },
+      { error: "Upload failed. Please try again later." },
       { status: 500 }
     );
   }

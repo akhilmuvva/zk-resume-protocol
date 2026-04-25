@@ -1,123 +1,65 @@
 # ZK Resume Protocol 🎓🔒
+**Built by Akhil Muvva**
 
-**Prove Your Credentials. Reveal Nothing.**
+I got tired of the way academic privacy works. If a job needs to know your GPA, you shouldn't have to hand over a PDF of your entire transcript. That's just lazy tech.
 
-ZK Resume Protocol is a decentralized, privacy-preserving academic credential verification system. It leverages **Zero-Knowledge Proofs (ZK-SNARKs)** and the **Ethereum Attestation Service (EAS)** to allow students to prove they meet a specific GPA/Degree threshold for a job without ever revealing their actual grades. 
+I built the **ZK Resume Protocol** to fix that. It uses ZK-SNARKs and the Ethereum Attestation Service (EAS) so you can prove you meet a requirement (like "GPA > 3.5") without showing the actual grade. The math does the talking, and your privacy stays intact.
 
-Additionally, it features a **fully decentralized AI-powered Applicant Tracking System (ATS) Scorer** built with **Transformers.js (v3)**, which runs entirely in the student's browser. It generates cryptographic hashes of the resume score to bind it to the decentralized credential via the **Ethereum Attestation Service (EAS)**.
-
----
-
-## 🏗️ Architecture & Flow
-
-The system operates with a **purely decentralized architecture**—no backend APIs, no centralized LLMs, no databases, and no trusted intermediaries.
-
-1. **🏛️ University (Issuer):** 
-   - Signs student credential data (Student ID hash, Degree, CGPA, Year) using the EAS SDK. 
-   - This creates a **gasless off-chain attestation**.
-2. **🧑‍🎓 Student (Holder):**
-   - Receives the EAS attestation.
-   - Computes a ZK-SNARK (Groth16) entirely inside their browser using `snarkjs` and WebAssembly.
-   - The circuit verifies that the student's *actual CGPA* is `>=` the *employer's required threshold*.
-   - Only the proof and the public threshold are exported. The raw CGPA never leaves the device.
-    - *Local AI Analysis:* Students upload their PDF resume to get an AI-generated ATS score using a local **ONNX model (all-MiniLM-L6-v2)**. The score is hashed via Poseidon and ready to be bound to their ZK credential.
-3. **🏢 Employer (Verifier):**
-   - Receives the cryptographic proof from the student.
-   - Calls the `verifyCredential` function on the `ResumeRegistry` smart contract deployed on the Sepolia Testnet.
-   - The smart contract mathematically verifies the proof on-chain and logs a successful verification event.
+I also added a local AI scanner for resumes. It uses Transformers.js to run the NLP model right in your browser. No data ever leaves your machine.
 
 ---
 
-## 🛠️ Technology Stack
+### How it Works
+This is 100% decentralized. No databases, no centralized APIs.
 
-### Smart Contracts (`/backend`)
-- **Solidity ^0.8.20:** Smart contracts for the verifier and registry.
-- **Circom 2.2.3:** Zero-knowledge circuit development (`resume.circom`).
-- **SnarkJS / circomlibjs:** ZK proof generation, trusted setup, and Poseidon hashing.
-- **Hardhat:** Deployment, testing, and compilation.
-- **Network:** Ethereum Sepolia Testnet.
-
-### Frontend (`/frontend`)
-- **Next.js 14 (App Router):** Core framework.
-- **TypeScript & Tailwind CSS:** Styling and type safety (with a custom Web3 glassmorphism aesthetic).
-- **Wagmi v2 & RainbowKit:** Wallet connection and contract interaction.
-- **EAS SDK:** Off-chain attestations.
-- **Anime.js:** Fluid micro-animations for the UI components.
-- **Transformers.js (v3):** Local, client-side NLP using ONNX Runtime for semantic similarity and ATS scoring.
-- **Pinata (IPFS):** Decentralized metadata storage for ATS verdicts.
+1.  **The University:** Issues an off-chain attestation via EAS. They sign your ID, degree, and GPA. It’s gasless and lives on IPFS or locally.
+2.  **The Student:** You generate a ZK proof (Groth16) in the browser. The circuit checks your GPA against the job's requirements.
+    *   *Local AI:* I used MiniLM models to parse resume PDFs locally. The score is hashed using Poseidon and bound to your credential.
+3.  **The Employer:** They get your proof and verify it on my `ResumeRegistry` contract on Sepolia. The contract checks the math and confirms everything is legit.
 
 ---
 
-## 📂 Project Structure
+### Tech Stack
+I kept this lean and focused on privacy:
 
-\`\`\`text
-zk-resume-protocol/
-├── backend/                  # Smart contracts and ZK circuits
-│   ├── circuits/             # Circom circuits and Groth16 artifacts
-│   ├── contracts/            # Solidity smart contracts
-│   ├── scripts/              # Deployment and Ceremony scripts
-│   └── test/                 # Hardhat tests
-│
-├── frontend/                 # Next.js 14 web application
-│   ├── app/                  # App Router pages (Analyze, Issue, Verify, etc.)
-│   ├── components/           # Reusable UI components & Animations
-│   ├── lib/                  # Wagmi config, snarkjs wrappers, EAS helpers
-│   └── public/circuits/      # WASM and ZKey files for browser-proving
-│
-└── README.md                 # Project documentation
-\`\`\`
+**Backend & Circuits**
+*   **Solidity 0.8.20** for the registry and verifier.
+*   **Circom 2.2.3** for the ZK logic (check `resume.circom`).
+*   **SnarkJS** for proof generation.
+*   **Hardhat** for the dev work and Sepolia deployment.
+
+**Frontend**
+*   **Next.js 14** (App Router).
+*   **Wagmi & RainbowKit** for wallet connections.
+*   **Transformers.js** for the browser-based AI.
+*   **Anime.js** for the UI transitions.
 
 ---
 
-## 🚀 Getting Started (Local Development)
+### Setup
+Want to run it?
 
-### Prerequisites
-- Node.js (v18+)
-- MetaMask (or another Web3 wallet) configured for Sepolia Testnet.
-
-### 1. Backend Setup
-Navigate to the backend directory and install dependencies:
-\`\`\`bash
+**1. Backend**
+```bash
 cd backend
 npm install
-\`\`\`
-
-Compile circuits, run the Groth16 trusted setup, and compile the smart contracts:
-\`\`\`bash
 npm run compile
-npx hardhat test
-\`\`\`
+```
 
-*(Note: Environment variables for deployment are handled in `backend/.env`)*
-
-### 2. Frontend Setup
-Navigate to the frontend directory:
-\`\`\`bash
+**2. Frontend**
+```bash
 cd frontend
 npm install
-\`\`\`
-
-Create a `.env.local` file and add your Anthropic API Key for the ATS feature:
-\`\`\`env
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_id
-NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=your_walletconnect_id
-PINATA_JWT=your_pinata_jwt_for_metadata_storage
-NEXT_PUBLIC_GATEWAY_URL=your_pinata_gateway
-\`\`\`
-
-Start the development server:
-\`\`\`bash
 npm run dev
-\`\`\`
-The app will be running at `http://localhost:3000`.
+```
+
+You'll need a `.env.local` for Pinata and your WalletConnect ID if you're deploying yourself.
 
 ---
 
-## 🔐 Security & Privacy
+### Security
+*   **Leak-proof:** I used a `GreaterEqThan` constraint. Since CGPA is a private signal, employers can't reverse-engineer your grade from the proof.
+*   **Local-First:** I didn't use OpenAI or Anthropic on purpose. Resume data stays in your browser.
+*   **Replay Protection:** The contract tracks IDs so nobody can steal or reuse a proof.
 
-- **No Data Leaks:** The ZK circuit uses a `GreaterEqThan` constraint. The raw CGPA is passed as a *private signal* and is fundamentally impossible to extract from the generated proof.
-- **Replay Protection:** The `ResumeRegistry.sol` contract hashes the proof's public parameters to ensure a student cannot reuse the same exact proof submission twice.
-- **Client-side AI Parsing:** PDF text extraction and AI scoring happen **entirely in the browser** via Web Workers and Transformers.js. No resume data ever leaves your device, ensuring maximum privacy and eliminating centralized API dependency.
-
----
-*Built with ❤️ for Web3 Privacy & Verifiable Credentials.*
+*Reach out if you want to talk ZK or Decentralized Identity!*

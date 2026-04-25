@@ -1,8 +1,6 @@
 /**
- * EAS Library — Off-chain Attestation Creation
- * ─────────────────────────────────────────────────────
- * Wraps EAS SDK for use in the browser (Next.js client components).
- * No backend needed — attestation is signed client-side by the university.
+ * eas.ts
+ * Browser-side EAS logic for creating off-chain attestations.
  */
 
 import {
@@ -14,27 +12,40 @@ import { ethers } from "ethers";
 import { CONTRACTS, SCHEMA_UID } from "./wagmi";
 
 export interface AttestationInput {
-  studentId: string;       // bytes32 hex string
-  cgpa: number;            // scaled ×100, e.g. 850 for 8.50
+  studentId: string;       // bytes32 hex
+  cgpa: number;            // scaled x100
   degree: string;
-  studentWallet: string;   // recipient address
+  studentWallet: string;   
+}
+
+export interface EASOffchainAttestation {
+  uid:     string;
+  sig:     { v: number; r: string; s: string };
+  message: {
+    schema:         string;
+    recipient:      string;
+    time:           bigint;
+    expirationTime: bigint;
+    revocable:      boolean;
+    refUID:         string;
+    data:           string;
+  };
 }
 
 export interface SignedAttestation {
-  uid: string;
-  attestation: object;
+  uid:         string;
+  attestation: EASOffchainAttestation;
   decodedData: AttestationInput;
   meta: {
     university: string;
-    createdAt: string;
-    schemaUID: string;
+    createdAt:  string;
+    schemaUID:  string;
   };
 }
 
 /**
- * Create and sign an EAS off-chain attestation.
- * Called by the university dashboard.
- * Gasless — no transaction is sent.
+ * Creates an off-chain attestation signed by the university.
+ * Gasless and entirely client-side.
  */
 export async function createOffchainAttestation(
   input: AttestationInput,
@@ -66,7 +77,7 @@ export async function createOffchainAttestation(
       refUID: ethers.ZeroHash as `0x${string}`,
       data: encodedData as `0x${string}`,
     },
-    signer as any
+    signer as ethers.Signer
   );
 
   return {
@@ -82,8 +93,7 @@ export async function createOffchainAttestation(
 }
 
 /**
- * Sign the message that ResumeRegistry.verifyCredential() will verify.
- * The university signs: keccak256(attestationUID, threshold, studentIdHash)
+ * Signs the specific hash required for the ResumeRegistry.sol verifyCredential() call.
  */
 export async function signRegistryMessage(
   attestationUID: string,
@@ -100,9 +110,7 @@ export async function signRegistryMessage(
   return await signer.signMessage(ethers.getBytes(messageHash));
 }
 
-/**
- * Download attestation as a JSON file (for student to store locally).
- */
+// Download utility for the JSON attestation file.
 export function downloadAttestation(attestation: SignedAttestation) {
   const blob = new Blob([JSON.stringify(attestation, null, 2)], {
     type: "application/json",

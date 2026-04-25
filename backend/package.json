@@ -16,14 +16,18 @@
     "slither": "slither contracts/ --exclude-dependencies",
     "clean": "hardhat clean && rimraf circuits/build"
   },
+  "overrides": {
+    "undici": "^6.13.0"
+  },
   "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/defender-sdk": "^2.7.1",
     "@types/chai": "^4.3.11",
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.11.5",
     "chai": "^4.3.10",
     "circomlibjs": "^0.1.7",
-    "hardhat": "^2.19.5",
+    "hardhat": "^2.28.0",
     "hardhat-gas-reporter": "^1.0.9",
     "rimraf": "^5.0.5",
     "ts-node": "^10.9.2",

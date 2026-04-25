@@ -6,19 +6,9 @@ include "circomlib/circuits/comparators.circom";
 include "circomlib/circuits/poseidon.circom";
 
 /*
- * ResumeProver Circuit
- * ─────────────────────────────────────────────────────
- * Proves: cgpa >= threshold
- * WITHOUT revealing the actual cgpa value.
- *
- * CGPA is scaled by 100 to avoid floating point:
- *   e.g., 8.50 GPA → 850
- *         7.00 GPA → 700
- *
- * Public inputs  : threshold, studentIdHash
- * Private inputs : cgpa, studentId (bytes32 as field)
- *
- * Public outputs : qualified (1 = yes, 0 = no)
+ * ResumeProver
+ * Proves cgpa >= threshold without leaking the grade.
+ * gpa is scaled by 100 (8.50 -> 850).
  */
 template ResumeProver() {
     // ── Private Inputs (kept secret, never on-chain) ──────────────
@@ -32,16 +22,12 @@ template ResumeProver() {
     // ── Output ────────────────────────────────────────────────────
     signal output qualified;    // 1 if cgpa >= threshold, else proof fails
 
-    // ── Constraint 1: Verify studentId matches its public hash ────
-    // This binds the private studentId to the on-chain attestation
-    // without revealing the raw ID.
+    // check id matches hash
     component hasher = Poseidon(1);
     hasher.inputs[0] <== studentId;
     hasher.out === studentIdHash;
 
-    // ── Constraint 2: Prove cgpa >= threshold ─────────────────────
-    // GreaterEqThan(n) uses n bits. 32 bits covers 0 to ~4.2B,
-    // which safely holds CGPA values (0 to 1000 range).
+    // prove cgpa >= threshold
     component gte = GreaterEqThan(32);
     gte.in[0] <== cgpa;
     gte.in[1] <== threshold;
@@ -49,17 +35,19 @@ template ResumeProver() {
     // Assign the result
     qualified <== gte.out;
 
-    // ── Hard constraint: proof only valid if qualified ─────────────
-    // This makes it IMPOSSIBLE to generate a valid proof for
-    // a CGPA below the threshold — no exceptions.
+    // must be qualified
     qualified === 1;
 
-    // ── Range check: prevent cgpa overflow attacks ─────────────────
-    // Ensures cgpa is in valid range [0, 1000]
+    // range checks [0, 1000]
     component cgpaRange = LessEqThan(32);
     cgpaRange.in[0] <== cgpa;
     cgpaRange.in[1] <== 1000;
     cgpaRange.out === 1;
+
+    component thresholdRange = LessEqThan(32);
+    thresholdRange.in[0] <== threshold;
+    thresholdRange.in[1] <== 1000;
+    thresholdRange.out === 1;
 }
 
 // Public signals: threshold and studentIdHash are visible to verifier

@@ -1,7 +1,8 @@
-/**
- * local-ai.ts — Fully Decentralized Resume Analysis
- * All computation is client-side. No API keys. No server.
- */
+// local-ai.ts - resume analysis
+// all runs on device, no server.
+import { logger } from "./logger";
+
+
 export interface LocalATSResult {
   generalScore: number;
   jdMatchScore?: number;
@@ -21,12 +22,10 @@ export interface LocalATSResult {
   cgpa?: string;
 }
 
-/**
- * Extracts text from a PDF file on the client side.
- */
+// pdf text extraction
 export async function extractTextFromPDF(file: File): Promise<string> {
   const pdfjs = await import("pdfjs-dist");
-  // @ts-ignore
+  // cdn worker for pdfjs
   pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
   const arrayBuffer = await file.arrayBuffer();
@@ -43,20 +42,17 @@ export async function extractTextFromPDF(file: File): Promise<string> {
   return fullText;
 }
 
-/**
- * Perform local NLP analysis on resume text.
- * Returns scores and a deterministic IPFS CID computed client-side.
- */
+// main analysis - keyword matching + scoring
 export async function analyzeResumeLocally(
   resumeText: string,
   jobDescription?: string,
   onProgress?: (progress: any) => void
 ): Promise<LocalATSResult> {
   
-  // 1. Semantic JD match — keyword overlap scoring (client-side, no model needed)
+  // Keyword overlap scoring
   const jdMatchScore = computeJDMatchScore(resumeText, jobDescription);
 
-  // 2. Rule-based Analysis for structural scoring
+  // Structural analysis keywords
   const technicalKeywords = [
     "React", "Node.js", "TypeScript", "Solidity", "Rust", "Python", 
     "Machine Learning", "Kubernetes", "AWS", "Docker", "Zero-Knowledge",
@@ -69,16 +65,15 @@ export async function analyzeResumeLocally(
     lowerResume.includes(skill.toLowerCase())
   );
 
-  // Extract CGPA (Simple Regex)
+  // extract gpa
   const cgpaMatch = resumeText.match(/(\d\.\d{1,2})\s*\/\s*10|\b(GPA|CGPA):?\s*(\d\.\d{1,2})/i);
   const extractedCGPA = cgpaMatch ? (cgpaMatch[1] || cgpaMatch[3]) : undefined;
 
-  // 3. Scoring Logic
   const sections = {
     education: lowerResume.includes("university") || lowerResume.includes("college") || lowerResume.includes("degree") ? 85 : 40,
     experience: lowerResume.includes("experience") || lowerResume.includes("worked") || lowerResume.includes("intern") || lowerResume.includes("founder") ? 90 : 30,
     skills: Math.min(foundSkills.length * 15, 100),
-    formatting: 95 // PDF structure was readable
+    formatting: 95 
   };
 
   const avgStructuralScore = (sections.education + sections.experience + sections.skills + sections.formatting) / 4;
@@ -90,11 +85,11 @@ export async function analyzeResumeLocally(
   if (jobDescription) {
     generalScore = Math.round((avgStructuralScore * 0.4) + (jdMatchScore * 0.6));
     qualified = jdMatchScore >= 65;
-    summary = `Candidate analysis performed locally. Semantic match score with job description: ${jdMatchScore}%. ${qualified ? "Profile shows strong alignment." : "Alignment could be improved."}`;
+    summary = `Local analysis complete. JD Match: ${jdMatchScore}%. ${qualified ? "Profile looks like a strong fit." : "Alignment could be better."}`;
   } else {
     generalScore = Math.round(avgStructuralScore);
     qualified = generalScore >= 70;
-    summary = "Decentralized AI Analysis complete. Your resume shows " + (generalScore > 80 ? "excellent" : "good") + " alignment with modern technical standards.";
+    summary = "Decentralized AI analysis done. Your resume is " + (generalScore > 80 ? "solid" : "pretty good") + " based on modern standards.";
   }
 
   const missingKeywords = jobDescription 
@@ -102,9 +97,9 @@ export async function analyzeResumeLocally(
     : technicalKeywords.filter(skill => !foundSkills.includes(skill)).slice(0, 3);
 
   const improvements = [
-    "Incorporate more quantitative metrics in your experience section.",
-    foundSkills.length < 5 ? "Add more core industry-standard technologies to your skills section." : "Your technical stack is well-represented.",
-    jdMatchScore < 70 && jobDescription ? "Tailor your professional summary to highlight keywords from the job description." : "Ensure your layout remains ATS-friendly."
+    "Try adding more quantitative metrics to your experience section.",
+    foundSkills.length < 5 ? "Boost your technical stack section with more core tools." : "Your tech stack representation is strong.",
+    jdMatchScore < 70 && jobDescription ? "Consider tailoring your summary to better match the JD keywords." : "Layout is clean and ATS-friendly."
   ];
 
   const analysisData = {
@@ -120,7 +115,7 @@ export async function analyzeResumeLocally(
     cgpa: extractedCGPA
   };
 
-  // 4. Decentralized IPFS CID — computed client-side, no server needed
+  // deterministic id
   const ipfsCID = await computeIPFSCID(analysisData);
 
   return {
@@ -129,48 +124,30 @@ export async function analyzeResumeLocally(
   };
 }
 
-/**
- * Compute a deterministic, content-addressed IPFS CIDv1 (SHA-256 / dag-pb / raw)
- * entirely client-side using the WebCrypto API.
- *
- * The CID is the real SHA-256 multihash of the JSON payload, encoded in
- * base32upper as a CIDv1 with codec 0x0129 (dag-json).
- *
- * Format:  bafy... (CIDv1, dag-json, sha2-256)
- *
- * Users can verify & optionally pin this CID themselves:
- *   ipfs add --cid-version 1 --raw-leaves data.json
- */
+// CIDv1 (SHA-256) via WebCrypto
 export async function computeIPFSCID(data: any): Promise<string> {
   try {
-    // Canonical JSON serialisation (sorted keys for determinism)
     const json = canonicalJSON(data);
     const encoder = new TextEncoder();
     const bytes = encoder.encode(json);
 
-    // SHA-256 digest
     const hashBuffer = await crypto.subtle.digest("SHA-256", bytes);
     const digest = new Uint8Array(hashBuffer);
 
-    // Build CIDv1 bytes:
-    //   varint(1)           = 0x01  (version)
-    //   varint(0x0129)      = 0x80 0x02  (dag-json codec)
-    //   varint(0x12)        = 0x12  (sha2-256 multihash code)
-    //   varint(32)          = 0x20  (digest length)
-    //   <32-byte digest>
+    // CIDv1: version, dag-json codec, sha2-256 multihash, length, digest
     const cidBytes = new Uint8Array([
-      0x01,        // CIDv1
-      0x80, 0x02,  // dag-json codec (varint 0x0129)
-      0x12,        // sha2-256
-      0x20,        // 32 bytes
+      0x01,        
+      0x80, 0x02,  
+      0x12,        
+      0x20,        
       ...digest
     ]);
 
-    // Base32 upper (RFC 4648, no padding) — IPFS uses this for CIDv1
-    return "b" + base32Upper(cidBytes);  // 'b' is the base32upper multibase prefix
+    return "b" + base32Upper(cidBytes); 
   } catch (err) {
-    console.error("CID computation error:", err);
-    // Last-resort: hex of hash with readable prefix
+    if (process.env.NODE_ENV === 'development') {
+      logger.warn("CID generation failed, falling back to basic hash:", err);
+    }
     const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
     const ab = await blob.arrayBuffer();
     const hash = await crypto.subtle.digest("SHA-256", ab);
@@ -180,9 +157,7 @@ export async function computeIPFSCID(data: any): Promise<string> {
   }
 }
 
-/**
- * RFC 4648 Base32 upper-case without padding.
- */
+// base32 encoding
 function base32Upper(bytes: Uint8Array): string {
   const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
   let result = "";
@@ -202,9 +177,7 @@ function base32Upper(bytes: Uint8Array): string {
   return result;
 }
 
-/**
- * Canonical JSON — sorted keys, deterministic.
- */
+// sort keys for deterministic json
 function canonicalJSON(value: any): string {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return JSON.stringify(value);
@@ -222,13 +195,7 @@ function canonicalJSON(value: any): string {
   );
 }
 
-/**
- * Upload to IPFS — tries Pinata server route first, then computes CID client-side.
- * The client-side CID is a real content-addressed identifier; the user can pin
- * it manually or via any IPFS node.
- *
- * @deprecated Use computeIPFSCID() directly for fully client-side operation.
- */
+// server backup if needed
 export async function uploadToIPFS(data: any): Promise<string> {
   try {
     const response = await fetch("/api/ipfs", {
@@ -236,20 +203,15 @@ export async function uploadToIPFS(data: any): Promise<string> {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Pinata upload failed");
+    if (!response.ok) throw new Error("Pinata failed");
     const { cid } = await response.json();
     return cid;
   } catch (_err) {
-    // Fully client-side fallback — real CIDv1 derived from content hash
     return computeIPFSCID(data);
   }
 }
 
-/**
- * Keyword-overlap JD match score (0–100).
- * Splits both texts into word tokens and computes Jaccard similarity
- * weighted by term frequency. Fully client-side — no model needed.
- */
+// Jaccard similarity for keyword matching
 function computeJDMatchScore(resumeText: string, jobDescription?: string): number {
   if (!jobDescription) return 0;
 
@@ -267,8 +229,7 @@ function computeJDMatchScore(resumeText: string, jobDescription?: string): numbe
     if (resumeTokens.has(token)) matched++;
   }
 
-  // Jaccard similarity × 100, clamped to [0, 100]
   const jaccard = matched / (resumeTokens.size + jdUnique.size - matched);
-  // Scale: raw jaccard on text tends to be low; multiply by 3.5 to get human-readable %
+  // Scaling constant to make the % feel more "human" based on typical resume density.
   return Math.min(100, Math.round(jaccard * 350));
 }

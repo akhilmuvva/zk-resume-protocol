@@ -1,14 +1,10 @@
-/**
- * Contract Library — ResumeRegistry Interactions
- * ─────────────────────────────────────────────────────
- * All on-chain reads and writes for the ResumeRegistry contract.
- * Uses wagmi hooks — no backend needed.
- */
+// contract.ts - registry interactions
+// on-chain reads and writes via wagmi.
 
 import { CONTRACTS } from "./wagmi";
 import type { GeneratedProof } from "./snarkjs";
 
-// ── ABI — only the functions we call from the frontend ─────────────
+// ABI - just the methods we call
 export const RESUME_REGISTRY_ABI = [
   // Write
   {
@@ -123,14 +119,14 @@ export const RESUME_REGISTRY_ABI = [
   },
 ] as const;
 
-// ── Wagmi contract config ───────────────────────────────────────────
+// wagmi config
 export const REGISTRY_ADDRESS = "0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9";
 export const REGISTRY_CONTRACT = {
   address: REGISTRY_ADDRESS,
   abi: RESUME_REGISTRY_ABI,
 } as const;
 
-// ── Helper Types ───────────────────────────────────────────────────
+// helper types
 export interface VerificationRecord {
   isVerified: boolean;
   threshold: bigint;
@@ -140,10 +136,7 @@ export interface VerificationRecord {
   blockNumber: bigint;
 }
 
-/**
- * Format proof calldata for contract write args.
- * Converts bigint arrays to the exact format wagmi expects.
- */
+// format proof args for wagmi
 export function formatVerifyArgs(
   proof: GeneratedProof,
   attestationUID: `0x${string}`,
@@ -166,26 +159,19 @@ export function formatVerifyArgs(
   ] as const;
 }
 
-/**
- * Format a threshold value for display.
- * Contract stores CGPA × 100, display as decimal.
- */
+// gpa display format
 export function formatThreshold(threshold: bigint): string {
   const n = Number(threshold);
   return (n / 100).toFixed(2);
 }
 
-/**
- * Shorten an Ethereum address for display.
- */
+// shorten address
 export function shortenAddress(addr: string): string {
   if (!addr || addr.length < 10) return addr;
   return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-/**
- * Get Etherscan link for a transaction hash.
- */
+// scan links
 export function etherscanTx(txHash: string): string {
   return `https://sepolia.etherscan.io/tx/${txHash}`;
 }

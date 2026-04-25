@@ -5,8 +5,13 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadCont
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { REGISTRY_CONTRACT, formatThreshold, etherscanTx, shortenAddress } from "@/lib/contract";
 import { useToast } from "@/components/ToastProvider";
-import { CheckCircle, XCircle, Loader2, ExternalLink, AlertCircle, Upload } from "lucide-react";
+import { CheckCircle, XCircle, Loader2, ExternalLink, AlertCircle, Upload, ShieldCheck, Database, Zap } from "lucide-react";
 import type { GeneratedProof } from "@/lib/snarkjs";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { SpotlightCard } from "@/components/ui/SpotlightCard";
+import { AnimatedBorderContainer } from "@/components/ui/AnimatedBorderContainer";
+import { motion, AnimatePresence } from "framer-motion";
 
 type VerifyState = "idle" | "loading" | "success" | "fail" | "error";
 
@@ -24,7 +29,6 @@ export default function VerifyPage() {
   const { writeContractAsync, data: txHash } = useWriteContract();
   const { isLoading: isTxPending } = useWaitForTransactionReceipt({ hash: txHash });
 
-  // On-chain read — check if holder already verified
   const { data: qualification } = useReadContract({
     ...REGISTRY_CONTRACT,
     functionName: "checkQualification",
@@ -34,7 +38,6 @@ export default function VerifyPage() {
     query: { enabled: holderAddress.length === 42 },
   });
 
-  // Load proof.json
   const loadProofFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -42,22 +45,21 @@ export default function VerifyPage() {
     reader.onload = (ev) => {
       try {
         setProof(JSON.parse(ev.target?.result as string));
-        toast("Proof loaded", "success");
+        toast("Proof loaded successfully", "success");
       } catch {
-        toast("Invalid proof file", "error");
+        toast("Invalid proof JSON file", "error");
       }
     };
     reader.readAsText(file);
   };
 
   const handleVerify = async () => {
-    if (!proof) return toast("Upload a proof.json first", "error");
-    if (!attestationUID.startsWith("0x")) return toast("Invalid attestation UID", "error");
-    if (!easSignature.startsWith("0x")) return toast("Invalid EAS signature", "error");
+    if (!proof) return toast("Proof file is missing", "error");
+    if (!attestationUID.startsWith("0x")) return toast("Attestation UID required", "error");
+    if (!easSignature.startsWith("0x")) return toast("Signature required", "error");
 
     setVerifyState("loading");
-    toast("Submitting to smart contract...", "info");
-
+    
     try {
       const hash = await writeContractAsync({
         ...REGISTRY_CONTRACT,
@@ -72,23 +74,27 @@ export default function VerifyPage() {
         ],
       });
 
-      toast("Transaction sent!", "success", hash);
       setVerifyState("success");
+      toast("Credential verified on-chain", "success", hash);
     } catch (err: any) {
-      const msg = err?.message || "Transaction failed";
-      if (msg.includes("InvalidProof"))          toast("ZK Proof is invalid", "error");
-      else if (msg.includes("AttestationAlready")) toast("Attestation already used", "error");
-      else if (msg.includes("UniversityNot"))     toast("University not registered", "error");
-      else                                         toast(msg.slice(0, 100), "error");
       setVerifyState("fail");
+      const msg = err?.message || "";
+      if (msg.includes("InvalidProof")) toast("ZK Proof verification failed", "error");
+      else toast("Verification transaction failed", "error");
     }
   };
 
   if (!isConnected) {
     return (
-      <div className="max-w-7xl mx-auto px-6 py-24 text-center">
-        <h1 className="text-4xl font-bold mb-4">Verify Credential</h1>
-        <p className="text-slate-400 mb-10">Connect your wallet to verify credentials on-chain.</p>
+      <div className="max-w-7xl mx-auto px-6 py-32 flex flex-col items-center justify-center min-h-[70vh]">
+        <div className="relative mb-8">
+          <div className="absolute -inset-4 bg-cyan-500/20 blur-3xl rounded-full" />
+          <Database className="w-20 h-20 text-cyan-500 relative z-10" />
+        </div>
+        <h1 className="text-5xl font-bold mb-4 tracking-tight">Employer Verification</h1>
+        <p className="text-slate-400 mb-10 max-w-md text-center text-lg leading-relaxed">
+          Connect your wallet to verify candidate credentials directly against the ZK Registry.
+        </p>
         <ConnectButton />
       </div>
     );
@@ -99,169 +105,200 @@ export default function VerifyPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      {/* Header */}
-      <div className="mb-10">
-        <h1 className="text-4xl font-bold mb-2">Verify Credential</h1>
-        <p className="text-slate-400">Call the smart contract to verify a candidate's ZK proof on-chain.</p>
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-12"
+      >
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold uppercase tracking-widest mb-4">
+          <ShieldCheck className="w-3.5 h-3.5" /> Trustless Verification
+        </div>
+        <h1 className="text-4xl font-bold mb-3 tracking-tight">Verify On-Chain Credentials</h1>
+        <p className="text-slate-400 text-lg leading-relaxed max-w-3xl">
+          Validate candidate proofs without ever seeing their private data. The registry confirms if they meet your threshold based on university-signed attestations.
+        </p>
+      </motion.div>
 
-      <div className="grid lg:grid-cols-[1fr,360px] gap-8">
-        {/* ── Main Form ────────────────────────────────────────────── */}
-        <div className="space-y-6">
-          {/* Quick On-chain Check */}
-          <div className="glass p-8">
-            <h2 className="font-bold text-lg mb-6">On-chain Qualification Check</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">Candidate Wallet Address</label>
+      <div className="grid lg:grid-cols-[1fr,360px] gap-8 items-start">
+        <div className="space-y-8">
+          {/* Quick Check */}
+          <SpotlightCard className="p-8">
+            <h2 className="text-xl font-bold mb-6 flex items-center gap-2">
+              <Zap className="w-5 h-5 text-amber-400" />
+              Qualified Check
+            </h2>
+            <div className="grid gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-semibold text-slate-300 ml-1">Candidate Address</label>
                 <input
                   value={holderAddress} onChange={(e) => setHolderAddress(e.target.value)}
                   placeholder="0x..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-cyan-500 transition-colors"
+                  className="w-full bg-[#0F121D]/50 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/40 transition-all placeholder:text-slate-700"
                 />
               </div>
-              <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-400">Minimum CGPA Required</span>
-                  <span className="text-cyan-400 font-bold">{(threshold / 100).toFixed(2)}</span>
+              <div className="space-y-4">
+                <div className="flex justify-between items-end px-1">
+                  <label className="text-sm font-semibold text-slate-300">Minimum CGPA Threshold</label>
+                  <span className="text-2xl font-black text-cyan-400">{(threshold / 100).toFixed(2)}</span>
                 </div>
                 <input
                   type="range" min={600} max={950} step={10} value={threshold}
                   onChange={(e) => setThreshold(Number(e.target.value))}
-                  className="w-full accent-cyan-500"
+                  className="w-full accent-cyan-500 h-2 bg-white/5 rounded-lg appearance-none cursor-pointer"
                 />
-                <div className="flex justify-between text-xs text-slate-600 mt-1">
-                  <span>6.00</span><span>9.50</span>
+                <div className="flex justify-between text-[10px] text-slate-600 font-bold uppercase tracking-widest">
+                  <span>Entry (6.0)</span>
+                  <span>Elite (9.5)</span>
                 </div>
               </div>
 
-              {/* Existing on-chain result */}
-              {holderAddress.length === 42 && existingRecord && (existingRecord as any).isVerified && (
-                <div className={`p-4 rounded-xl border ${existingQualified ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}>
-                  <div className={`flex items-center gap-2 font-semibold mb-2 ${existingQualified ? "text-emerald-400" : "text-red-400"}`}>
-                    {existingQualified ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
-                    {existingQualified ? "Qualified" : "Does not meet threshold"}
-                  </div>
-                  <p className="text-xs text-slate-500 font-mono">
-                    On-chain threshold: {formatThreshold((existingRecord as any).threshold)} | Block #{(existingRecord as any).blockNumber?.toString()}
-                  </p>
-                </div>
-              )}
+              <AnimatePresence>
+                {holderAddress.length === 42 && existingRecord && (existingRecord as any).isVerified && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    className={`p-6 rounded-2xl border ${existingQualified ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"}`}
+                  >
+                    <div className={`flex items-center gap-2 font-bold mb-2 text-lg ${existingQualified ? "text-emerald-400" : "text-red-400"}`}>
+                      {existingQualified ? <CheckCircle className="w-6 h-6" /> : <XCircle className="w-6 h-6" />}
+                      {existingQualified ? "Qualified" : "Below Threshold"}
+                    </div>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Stored Proof: {formatThreshold((existingRecord as any).threshold)} threshold | Verified at Block #{(existingRecord as any).blockNumber?.toString()}
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          </SpotlightCard>
 
-          {/* Full Verification */}
-          <div className="glass p-8">
-            <h2 className="font-bold text-lg mb-2">Submit New Verification</h2>
-            <p className="text-sm text-slate-500 mb-6">Upload proof.json and provide the attestation details to verify on-chain.</p>
+          {/* New Verification */}
+          <SpotlightCard className="p-8">
+            <h2 className="text-xl font-bold mb-2">New Verification Batch</h2>
+            <p className="text-sm text-slate-500 mb-8">Submit a new ZK proof to the registry to unlock candidate qualification status.</p>
 
-            <div className="space-y-4">
-              {/* Proof file */}
-              <label className={`flex items-center justify-center border-2 border-dashed rounded-2xl p-6 cursor-pointer transition-colors ${proof ? "border-emerald-500/50 bg-emerald-500/5" : "border-white/10 hover:border-cyan-500/50"}`}>
+            <div className="space-y-6">
+              <label className={`flex flex-col items-center justify-center border-2 border-dashed rounded-3xl p-10 cursor-pointer transition-all ${proof ? "border-emerald-500/40 bg-emerald-500/5" : "border-white/5 hover:border-cyan-500/40 hover:bg-cyan-500/5 group"}`}>
                 {proof ? (
-                  <div className="flex items-center gap-2 text-emerald-400 text-sm">
-                    <CheckCircle className="w-5 h-5" /> proof.json loaded
-                  </div>
+                  <>
+                    <CheckCircle className="w-10 h-10 text-emerald-500 mb-3" />
+                    <span className="text-emerald-400 font-bold">Proof file loaded</span>
+                    <span className="text-xs text-emerald-500/60 mt-1 font-mono">{(proof as any).protocol} verified</span>
+                  </>
                 ) : (
-                  <div className="flex items-center gap-2 text-slate-400 text-sm">
-                    <Upload className="w-5 h-5" /> Upload proof.json
-                  </div>
+                  <>
+                    <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                      <Upload className="w-6 h-6 text-slate-400" />
+                    </div>
+                    <span className="text-slate-300 font-semibold">Drop proof.json here</span>
+                    <span className="text-xs text-slate-500 mt-1">Generated by candidate ZK circuit</span>
+                  </>
                 )}
                 <input type="file" accept=".json" className="hidden" onChange={loadProofFile} />
               </label>
 
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">Attestation UID (bytes32)</label>
-                <input
-                  value={attestationUID} onChange={(e) => setAttestationUID(e.target.value)}
-                  placeholder="0x..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-cyan-500 transition-colors"
-                />
+              <div className="grid md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-300 ml-1">Attestation UID</label>
+                  <input
+                    value={attestationUID} onChange={(e) => setAttestationUID(e.target.value)}
+                    placeholder="0x..."
+                    className="w-full bg-[#0F121D]/50 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/40 transition-all placeholder:text-slate-800"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-300 ml-1">University Signature</label>
+                  <input
+                    value={easSignature} onChange={(e) => setEasSignature(e.target.value)}
+                    placeholder="0x..."
+                    className="w-full bg-[#0F121D]/50 border border-white/5 rounded-2xl px-5 py-4 text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500/40 transition-all placeholder:text-slate-800"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm text-slate-400 mb-2">University EAS Signature</label>
-                <input
-                  value={easSignature} onChange={(e) => setEasSignature(e.target.value)}
-                  placeholder="0x..."
-                  className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white font-mono text-sm focus:outline-none focus:border-cyan-500 transition-colors"
-                />
-              </div>
-
-              <button
+              <Button
+                variant="shiny"
                 onClick={handleVerify}
                 disabled={verifyState === "loading" || isTxPending || !proof}
-                className="w-full py-4 rounded-2xl bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-cyan-500/30"
+                className="w-full py-8 text-lg font-bold"
               >
                 {verifyState === "loading" || isTxPending ? (
-                  <><Loader2 className="w-5 h-5 animate-spin" /> Verifying On-chain...</>
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Committing to Chain...</>
                 ) : (
-                  "Verify On-chain"
+                  "Verify & Register Status"
                 )}
-              </button>
+              </Button>
             </div>
-          </div>
+          </SpotlightCard>
 
-          {/* Result Cards */}
-          {verifyState === "success" && (
-            <div className="glass p-10 text-center border-emerald-500/40 glow-green">
-              <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle className="w-8 h-8 text-emerald-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-emerald-400 mb-2">Qualified ✓</h3>
-              <p className="text-slate-400 mb-6">CGPA meets threshold | Verified on Sepolia</p>
-              {txHash && (
-                <a href={etherscanTx(txHash)} target="_blank" rel="noreferrer"
-                  className="inline-flex items-center gap-1 text-cyan-400 hover:underline font-mono text-sm">
-                  {txHash.slice(0, 20)}... <ExternalLink className="w-4 h-4" />
-                </a>
-              )}
-            </div>
-          )}
-
-          {verifyState === "fail" && (
-            <div className="glass p-10 text-center border-red-500/40 glow-red">
-              <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center mx-auto mb-4">
-                <XCircle className="w-8 h-8 text-red-400" />
-              </div>
-              <h3 className="text-2xl font-bold text-red-400 mb-2">Not Qualified ✗</h3>
-              <p className="text-slate-400">Proof invalid or threshold not met</p>
-            </div>
-          )}
+          <AnimatePresence>
+            {verifyState === "success" && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+                <AnimatedBorderContainer className="p-1 rounded-3xl" glowColor="rgba(16, 185, 129, 0.5)">
+                  <div className="bg-[#0A0E1A] rounded-[calc(1.5rem-1px)] p-12 text-center">
+                    <div className="w-20 h-20 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-6">
+                      <CheckCircle className="w-10 h-10 text-emerald-400" />
+                    </div>
+                    <h3 className="text-3xl font-black text-emerald-400 mb-3 tracking-tighter uppercase">Verification Successful</h3>
+                    <p className="text-slate-400 text-lg mb-8">The candidate has been officially registered as Qualified on-chain.</p>
+                    {txHash && (
+                      <Button variant="outline" asChild>
+                        <a href={etherscanTx(txHash)} target="_blank" rel="noreferrer" className="font-mono text-sm">
+                          {shortenAddress(txHash)} <ExternalLink className="w-4 h-4 ml-2" />
+                        </a>
+                      </Button>
+                    )}
+                  </div>
+                </AnimatedBorderContainer>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* ── Sidebar ──────────────────────────────────────────────── */}
         <div className="space-y-6">
-          <div className="glass p-6">
-            <h3 className="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">Verification Timeline</h3>
-            {[
-              { label: "Proof Submitted",   done: verifyState !== "idle" },
-              { label: "Contract Called",   done: verifyState === "success" || verifyState === "fail" },
-              { label: "Groth16 Verified",  done: verifyState === "success" },
-              { label: "Result Stored",     done: verifyState === "success" },
-            ].map(({ label, done }) => (
-              <div key={label} className="flex items-center gap-3 py-3 border-b border-white/5 last:border-0">
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${done ? "bg-emerald-400" : "bg-white/10"}`} />
-                <span className={`text-sm ${done ? "text-emerald-400" : "text-slate-500"}`}>{label}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="glass p-6">
-            <h3 className="font-bold text-sm text-slate-400 uppercase tracking-wider mb-4">What Stays Private</h3>
-            <div className="space-y-2 text-xs text-slate-500">
-              {["Actual CGPA value", "Student ID (raw)", "Degree name", "University identity"].map((item) => (
-                <div key={item} className="flex items-center gap-2">
-                  <span className="text-emerald-400">✓ Hidden:</span> {item}
+          <Card className="border-white/5 bg-[#0A0E1A]/50 backdrop-blur-sm">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-slate-500 font-bold">Process State</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {[
+                { label: "Proof Uploaded",   done: !!proof },
+                { label: "Args Serialized",  done: verifyState !== "idle" },
+                { label: "Sepolia Tx Sent",   done: !!txHash },
+                { label: "Registry Updated", done: verifyState === "success" },
+              ].map(({ label, done }) => (
+                <div key={label} className="flex items-center gap-3 py-4 border-b border-white/5 last:border-0">
+                  <div className={`w-2 h-2 rounded-full transition-all duration-500 ${done ? "bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.6)]" : "bg-white/10"}`} />
+                  <span className={`text-xs font-bold uppercase tracking-tight ${done ? "text-cyan-400" : "text-slate-600"}`}>{label}</span>
                 </div>
               ))}
-              <div className="mt-4 pt-4 border-t border-white/5">
-                <div className="flex items-center gap-2 text-slate-400">
-                  <span className="text-cyan-400">↗ Revealed:</span> CGPA ≥ {(threshold / 100).toFixed(2)} (boolean)
+            </CardContent>
+          </Card>
+
+          <Card className="border-white/5 bg-[#0A0E1A]/50 backdrop-blur-sm relative overflow-hidden">
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-500/10 blur-3xl rounded-full" />
+            <CardHeader className="pb-4">
+              <CardTitle className="text-xs uppercase tracking-widest text-slate-500 font-bold">Privacy Matrix</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black text-emerald-500/70 uppercase tracking-widest mb-2">Zero-Knowledge Mask</p>
+                {["Actual GPA", "University Name", "Student ID"].map((item) => (
+                  <div key={item} className="flex items-center justify-between text-[11px] text-slate-500 font-medium">
+                    <span>{item}</span>
+                    <span className="text-emerald-500/50">SHIELDED</span>
+                  </div>
+                ))}
+              </div>
+              <div className="pt-4 border-t border-white/5">
+                <p className="text-[10px] font-black text-cyan-500/70 uppercase tracking-widest mb-2">Revealed to Contract</p>
+                <div className="flex items-center justify-between text-[11px] text-slate-300 font-bold">
+                  <span>GP ≥ {(threshold / 100).toFixed(2)}</span>
+                  <span className="text-cyan-400">VERIFIED</span>
                 </div>
               </div>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

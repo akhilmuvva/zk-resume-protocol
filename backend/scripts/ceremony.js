@@ -15,6 +15,7 @@ const snarkjs   = require("snarkjs");
 const { getCurveFromName } = require("ffjavascript");
 const fs        = require("fs");
 const path      = require("path");
+const crypto    = require("crypto");
 
 const ROOT          = path.join(__dirname, "..");
 const BUILD         = path.join(ROOT, "circuits", "build");
@@ -34,7 +35,12 @@ async function main() {
   console.log("  ZK Resume Protocol — Trusted Setup Ceremony");
   console.log("═".repeat(52));
 
-  // ── Pre-flight ──────────────────────────────────────────────────
+  // ── Pre-flight: Node.js Check ──────────────────────────────────
+  if (parseInt(process.versions.node.split(".")[0]) < 18) {
+    console.error("❌ ERROR: Node.js v18+ is required for cryptographically secure ceremony.");
+    process.exit(1);
+  }
+
   const wasmPath = path.join(BUILD, "resume_js", "resume.wasm");
   const r1csPath = path.join(BUILD, "resume.r1cs");
 
@@ -60,12 +66,13 @@ async function main() {
   ok("pot12_0000.ptau created");
 
   log("2.2 Contributing (Phase 1)...");
+  const phase1Entropy = crypto.randomBytes(32).toString("hex");
   await snarkjs.powersOfTau.contribute(
     pot0, pot1,
     "ZKResume Initial",
-    "zkresume2025_secure_entropy_phrase_for_ceremony"
+    phase1Entropy
   );
-  ok("pot12_0001.ptau created");
+  ok("pot12_0001.ptau created (using secure random entropy)");
 
   log("2.3 Preparing Phase 2...");
   await snarkjs.powersOfTau.preparePhase2(pot1, potFinal);
@@ -83,12 +90,13 @@ async function main() {
   ok("resume_0000.zkey created");
 
   log("2.5 Phase 2 contribution...");
+  const phase2Entropy = crypto.randomBytes(32).toString("hex");
   await snarkjs.zKey.contribute(
     zkey0, zkeyFinal,
     "ZKResume Phase2",
-    "phase2entropy2025_secure_phrase_for_production"
+    phase2Entropy
   );
-  ok("resume_final.zkey created");
+  ok("resume_final.zkey created (using secure random entropy)");
 
   log("2.6 Exporting verification key...");
   const vkey = await snarkjs.zKey.exportVerificationKey(zkeyFinal);
@@ -129,7 +137,10 @@ async function main() {
   // ── 3e: Export Solidity Verifier ────────────────────────────────
   section("TASK 3e — Export Solidity Verifier");
   log("Exporting Groth16Verifier.sol (auto-generated)...");
-  const solidity = await snarkjs.zKey.exportSolidityVerifier(zkeyFinal);
+  const templates = {
+    groth16: fs.readFileSync(path.join(ROOT, "node_modules", "snarkjs", "templates", "verifier_groth16.sol.ejs"), "utf8"),
+  };
+  const solidity = await snarkjs.zKey.exportSolidityVerifier(zkeyFinal, templates);
   const verifierPath = path.join(CONTRACTS_DIR, "ResumeVerifier.sol");
   fs.writeFileSync(verifierPath, solidity);
   ok(`ResumeVerifier.sol written (${(solidity.length / 1024).toFixed(1)} KB)`);
@@ -181,5 +192,6 @@ async function main() {
 
 main().catch(err => {
   console.error("\n❌ Ceremony failed:", err.message ?? err);
+  console.error(err.stack);
   process.exit(1);
 });
